@@ -1,15 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" role="img" aria-label="rivers">
   <title>rivers</title>
   <!--
-    Rendered in two contexts:
-      • Inline inside rivers-ui (sidebar): the page's CSS variables
-        (`--accent`, `--accent-hover`, `--secondary`) cascade into the
-        inlined SVG, so the gradient re-themes with the user's accent
-        palette.
-      • Standalone (rivers-ui favicon, mkdocs theme.logo, README):
-        the SVG is loaded as its own document, page CSS doesn't reach
-        it, and the `var(..., fallback)` fallbacks render the default
-        rust + cyan palette.
+    Rendered in two contexts. Inline inside rivers-ui (sidebar):
+    the host page's accent CSS variables cascade in, so the gradient
+    re-themes with the user's accent palette. Standalone (rivers-ui
+    favicon, mkdocs theme.logo, README): page CSS doesn't reach the
+    SVG, and the fallback colours in the inline style render the
+    default rust and cyan palette.
   -->
   <defs>
     <style>

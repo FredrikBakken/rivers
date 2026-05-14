@@ -43,6 +43,9 @@ theme:
 nav:
   - Home: index.md
   - Getting Started: getting-started.md
+  - Comparisons:
+      - Overview: comparisons/index.md
+      - Dagster: comparisons/dagster.md
   - Concepts:
       - Assets: concepts/assets.md
       - Jobs & Executors: concepts/jobs.md
