@@ -1,13 +1,12 @@
 name: release-python
 
-# Builds the rivers Python wheel + sdist for all supported platforms and
+# Builds the rivers Python wheels for all supported platforms and
 # publishes to PyPI via Trusted Publishing on tag push (v*.*.*).
 #
 # Wheels are abi3-py310, so one wheel per (os, libc, arch) covers
 # Python 3.10+. Platforms: linux-gnu/{x86_64, aarch64} (manylinux_2_17),
 # linux-musl/{x86_64, aarch64} (musllinux_1_2), macos/{x86_64, arm64},
-# windows/x86_64, sdist.
-
+# windows/x86_64.
 
 on:
   push:
@@ -21,8 +20,39 @@ concurrency:
 permissions: {}
 
 jobs:
+  # WASM is platform-independent — build once on Linux, reuse across
+  # per-OS wheel jobs. The python crate's ssr-gated `include_bytes!`s
+  # on `rust/rivers-ui/pkg/` would fail without it.
+  build-wasm:
+    name: Build hydration WASM bundle
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Setup environment (no cache — release builds run from fresh state)
+        uses: ./.github/actions/setup-env
+        with:
+          cache: "false"
+
+      - name: Build rivers-ui hydration WASM
+        run: just wasm
+
+      - name: Upload WASM bundle
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: rivers-ui-pkg
+          path: rust/rivers-ui/pkg/
+          if-no-files-found: error
+          retention-days: 1
+
   build-linux:
     name: Build wheel (linux ${{ matrix.libc }} ${{ matrix.arch }})
+    needs: build-wasm
     runs-on: ubuntu-latest
     permissions:
       contents: read       # checkout sources
@@ -68,6 +98,12 @@ jobs:
         with:
           version: ${{ steps.version.outputs.version }}
 
+      - name: Download WASM bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rivers-ui-pkg
+          path: rust/rivers-ui/pkg/
+
       - name: Build wheel
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
@@ -91,6 +127,7 @@ jobs:
 
   build-macos:
     name: Build wheel (macos ${{ matrix.arch }})
+    needs: build-wasm
     runs-on: ${{ matrix.runner }}
     permissions:
       contents: read       # checkout sources
@@ -124,6 +161,12 @@ jobs:
         with:
           version: ${{ steps.version.outputs.version }}
 
+      - name: Download WASM bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rivers-ui-pkg
+          path: rust/rivers-ui/pkg/
+
       - name: Build wheel
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
@@ -146,6 +189,7 @@ jobs:
 
   build-windows:
     name: Build wheel (windows ${{ matrix.arch }})
+    needs: build-wasm
     runs-on: windows-latest
     permissions:
       contents: read       # checkout sources
@@ -175,6 +219,12 @@ jobs:
         with:
           version: ${{ steps.version.outputs.version }}
 
+      - name: Download WASM bundle
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: rivers-ui-pkg
+          path: rust/rivers-ui/pkg/
+
       - name: Build wheel
         uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
         with:
@@ -195,52 +245,9 @@ jobs:
           path: python/dist/*.whl
           if-no-files-found: error
 
-  sdist:
-    name: Build sdist
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read       # checkout sources
-      id-token: write      # OIDC for Sigstore signing via attest-build-provenance
-      attestations: write  # publish SLSA provenance to repo attestation log
-
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          persist-credentials: false
-
-      - name: Resolve release version from tag
-        id: version
-        env:
-          REF_NAME: ${{ github.ref_name }}
-        run: echo "version=${REF_NAME#v}" >> "$GITHUB_OUTPUT"
-
-      - name: Set release version
-        uses: ./.github/actions/set-release-version
-        with:
-          version: ${{ steps.version.outputs.version }}
-
-      - name: Build sdist
-        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1
-        with:
-          working-directory: python
-          command: sdist
-          args: --out dist
-
-      - name: Attest sdist provenance
-        uses: actions/attest-build-provenance@a2bbfa25375fe432b6a289bc6b6cd05ecd0c4c32 # v4.1.0
-        with:
-          subject-path: "python/dist/*.tar.gz"
-
-      - name: Upload sdist
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: sdist
-          path: python/dist/*.tar.gz
-          if-no-files-found: error
-
   publish:
     name: Publish to PyPI
-    needs: [build-linux, build-macos, build-windows, sdist]
+    needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     permissions:
       id-token: write  # PyPI Trusted Publishing exchanges OIDC for upload token
@@ -252,12 +259,6 @@ jobs:
           path: dist
           pattern: "wheel-*"
           merge-multiple: true
-
-      - name: Download sdist
-        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-        with:
-          name: sdist
-          path: dist
 
       - name: List dist
         run: ls -la dist
