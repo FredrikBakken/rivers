@@ -1218,22 +1218,22 @@ dependencies = [
 delta = [
     { name = "deltalake" },
 ]
+delta-polars = [
+    { name = "deltalake" },
+    { name = "polars" },
+    { name = "polars-deltalake" },
+]
+delta-pyarrow = [
+    { name = "deltalake" },
+    { name = "pyarrow" },
+]
 otel = [
     { name = "opentelemetry-api" },
 ]
 polars = [
     { name = "polars" },
 ]
-polars-delta = [
-    { name = "deltalake" },
-    { name = "polars" },
-    { name = "polars-deltalake" },
-]
 pyarrow = [
-    { name = "pyarrow" },
-]
-pyarrow-delta = [
-    { name = "deltalake" },
     { name = "pyarrow" },
 ]
 
@@ -1244,17 +1244,17 @@ requires-dist = [
     { name = "obstore", specifier = ">=0.9.1" },
     { name = "opentelemetry-api", marker = "extra == 'otel'", specifier = ">=1.0" },
     { name = "polars", marker = "extra == 'polars'", specifier = ">=1.33.1" },
-    { name = "polars-deltalake", marker = "extra == 'polars-delta'", specifier = ">=1.2.0" },
+    { name = "polars-deltalake", marker = "extra == 'delta-polars'", specifier = ">=1.2.0" },
     { name = "pyarrow", marker = "extra == 'pyarrow'", specifier = ">=18.0.0" },
     { name = "pydantic", specifier = ">=2.11.9" },
     { name = "pydantic-settings", specifier = ">=2.0" },
-    { name = "rivers", extras = ["delta"], marker = "extra == 'polars-delta'" },
-    { name = "rivers", extras = ["delta"], marker = "extra == 'pyarrow-delta'" },
-    { name = "rivers", extras = ["polars"], marker = "extra == 'polars-delta'" },
-    { name = "rivers", extras = ["pyarrow"], marker = "extra == 'pyarrow-delta'" },
+    { name = "rivers", extras = ["delta"], marker = "extra == 'delta-polars'" },
+    { name = "rivers", extras = ["delta"], marker = "extra == 'delta-pyarrow'" },
+    { name = "rivers", extras = ["polars"], marker = "extra == 'delta-polars'" },
+    { name = "rivers", extras = ["pyarrow"], marker = "extra == 'delta-pyarrow'" },
     { name = "typer", specifier = ">=0.9" },
 ]
-provides-extras = ["polars", "pyarrow", "delta", "polars-delta", "pyarrow-delta", "otel"]
+provides-extras = ["polars", "pyarrow", "delta", "delta-polars", "delta-pyarrow", "otel"]
 
 [[package]]
 name = "rivers-workspace"
