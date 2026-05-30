@@ -50,16 +50,19 @@ __all__: list[str] = [
 ]
 
 
-_TYPE_TO_EXTRA: dict[str, str] = {
-    "Table": "pyarrow",
-    "RecordBatchReader": "pyarrow",
-    "DataFrame": "polars",
-    "LazyFrame": "polars",
+# Keyed by the type's top-level module rather than its class name: ``DataFrame``
+# is shared by pandas, polars and datafusion, so a name-based map can't tell them
+# apart when suggesting the right install extra.
+_MODULE_TO_EXTRA: dict[str, str] = {
+    "pyarrow": "pyarrow",
+    "polars": "polars",
+    "pandas": "pandas",
+    "datafusion": "datafusion",
 }
 
 
 def _build_type_handler_map() -> dict[type, DeltaTypeHandler]:
-    """Best-effort discovery of installed type handlers (pyarrow, polars).
+    """Best-effort discovery of installed type handlers (pyarrow, polars, pandas).
 
     Returns a mapping from supported Python type to its handler. Missing optional
     dependencies are silently skipped — the handler is only registered when its
@@ -69,6 +72,8 @@ def _build_type_handler_map() -> dict[type, DeltaTypeHandler]:
     for mod_path, cls_name in [
         ("rivers.io_handlers.delta.pyarrow", "PyArrowTypeHandler"),
         ("rivers.io_handlers.delta.polars", "PolarsTypeHandler"),
+        ("rivers.io_handlers.delta.datafusion", "DataFusionTypeHandler"),
+        ("rivers.io_handlers.delta.pandas", "PandasTypeHandler"),
     ]:
         try:
             mod = __import__(mod_path, fromlist=[cls_name])
@@ -123,7 +128,7 @@ class DeltaIOHandler(BaseIOHandler):
         handler = self.type_handlers().get(target_type)
         if handler is not None:
             return handler
-        extra = _TYPE_TO_EXTRA.get(target_type.__name__)
+        extra = _MODULE_TO_EXTRA.get(target_type.__module__.split(".", 1)[0])
         if extra:
             raise TypeError(
                 f"No handler for {target_type.__name__}. "
@@ -302,6 +307,7 @@ class DeltaIOHandler(BaseIOHandler):
         handler = self._resolve_handler(context.type_hint)
         return handler.load_input(
             uri,
+            table_name,
             self.storage_options,
             predicate,
             context.type_hint,
