@@ -15,6 +15,7 @@ use super::eval_dispatcher::{DueEval, EvalDispatcher};
 use super::tick_processing::process_tick_result;
 use super::types::{TickResult, TickWriteMsg};
 use crate::executor::ops::now_ts;
+use crate::gil_threads::GilThreads;
 use crate::repository::PyCodeRepository;
 
 /// Backfill pickup loop — polls for Requested backfills owned by this CL every
@@ -25,6 +26,7 @@ pub(crate) fn spawn_backfill_pickup_loop(
     handle: ScopedStorageHandle<SurrealStorage>,
     cancel: CancellationToken,
     run_queue_enabled: bool,
+    gil_threads: GilThreads,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
         let interval = std::time::Duration::from_secs(5);
@@ -55,7 +57,7 @@ pub(crate) fn spawn_backfill_pickup_loop(
             for record in pending {
                 let repo = repo.clone();
                 let backfill_id = record.backfill_id.clone();
-                let h = std::thread::spawn(move || {
+                gil_threads.spawn(move || {
                     let repo_ref = repo.get();
                     if run_queue_enabled {
                         if let Err(e) = repo_ref.execute_backfill_queued_inner(&backfill_id) {
@@ -75,7 +77,6 @@ pub(crate) fn spawn_backfill_pickup_loop(
                         );
                     }
                 });
-                crate::shutdown::register_backfill_handle(h);
             }
         }
     })
