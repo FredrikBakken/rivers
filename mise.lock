@@ -5,7 +5,7 @@ version = "0.22.3"
 backend = "cargo:cargo-zigbuild"
 
 [[tools."cargo:wasm-bindgen-cli"]]
-version = "0.2.122"
+version = "0.2.121"
 backend = "cargo:wasm-bindgen-cli"
 
 [[tools."cargo:wasm-pack"]]
@@ -196,6 +196,38 @@ url = "https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-darwin-amd64"
 [tools.k3d."platforms.windows-x64"]
 checksum = "sha256:49d0b9c796f5b8ba6f58a1dd5469e8b7b34bf9b6ce9078633eedb2789680a034"
 url = "https://github.com/k3d-io/k3d/releases/download/v5.9.0/k3d-windows-amd64.exe"
+
+[[tools.protobuf]]
+version = "35.0"
+backend = "aqua:protocolbuffers/protobuf/protoc"
+
+[tools.protobuf."platforms.linux-arm64"]
+checksum = "sha256:36b518ac14d90351cc6598228ed2bbe5afe4e357b1af470b07e0ec1609875de2"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-linux-aarch_64.zip"
+
+[tools.protobuf."platforms.linux-arm64-musl"]
+checksum = "sha256:36b518ac14d90351cc6598228ed2bbe5afe4e357b1af470b07e0ec1609875de2"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-linux-aarch_64.zip"
+
+[tools.protobuf."platforms.linux-x64"]
+checksum = "sha256:a45cda0989c17dd950db55f6fbe1e5814c50fda08e87aa422980ac1f89dddbbc"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-linux-x86_64.zip"
+
+[tools.protobuf."platforms.linux-x64-musl"]
+checksum = "sha256:a45cda0989c17dd950db55f6fbe1e5814c50fda08e87aa422980ac1f89dddbbc"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-linux-x86_64.zip"
+
+[tools.protobuf."platforms.macos-arm64"]
+checksum = "sha256:45444963204757fd3e2fbe304bc1fdadfb488d8556ff099c4cc06575eab88976"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-osx-aarch_64.zip"
+
+[tools.protobuf."platforms.macos-x64"]
+checksum = "sha256:3580c2d115fccb5b0239960c8f70f8da14787b1973a46b2f39c315ad71c11e01"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-osx-x86_64.zip"
+
+[tools.protobuf."platforms.windows-x64"]
+checksum = "sha256:d1cede9e308cc3eb072392af1c02ccae4bdd3d2f374ec2970dbd8cdfdaa91363"
+url = "https://github.com/protocolbuffers/protobuf/releases/download/v35.0/protoc-35.0-win64.zip"
 
 [[tools.rust]]
 version = "stable"
