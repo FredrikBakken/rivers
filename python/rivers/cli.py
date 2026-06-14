@@ -206,18 +206,17 @@ def dev(
         }
     )
 
-    os.environ["RIVERS_DEPLOYMENT"] = "dev"
-    if cfg.module.path:
-        os.environ["RIVERS_MODULE"] = cfg.module.path
-    if cfg.storage.endpoint:
-        os.environ["RIVERS_SURREAL_ENDPOINT"] = cfg.storage.endpoint
-
     if cfg.module.path is None:
         typer.echo(
             "Error: no module configured. Set 'module' in [rivers] config or pass --module",
             err=True,
         )
         raise typer.Exit(1)
+
+    os.environ["RIVERS_DEPLOYMENT"] = "dev"
+    os.environ["RIVERS_MODULE"] = cfg.module.path
+    if cfg.storage.endpoint:
+        os.environ["RIVERS_SURREAL_ENDPOINT"] = cfg.storage.endpoint
 
     # Import user module and resolve repository before opening storage —
     # otherwise a bad module name strands a RocksDB-locked dir on disk.
@@ -274,12 +273,16 @@ def dev(
 
 @app.command()
 def serve(
-    module: str = typer.Argument(help="Python module path containing CodeRepository"),
-    repo_var: str = typer.Option(
-        "repo", help="Variable name of CodeRepository in module"
+    module: str | None = typer.Argument(
+        None,
+        help="Python module path containing CodeRepository",
+    ),
+    repo_var: str | None = typer.Option(
+        None,
+        help="Variable name of CodeRepository in module",
     ),
     host: str = typer.Option("0.0.0.0", help="Host to bind to"),
-    grpc_port: int = typer.Option(3001, help="Port for gRPC backend server"),
+    grpc_port: int | None = typer.Option(None, help="Port for gRPC backend server"),
     surreal_endpoint: str = typer.Option(
         ..., envvar="RIVERS_SURREAL_ENDPOINT", help="Remote SurrealDB endpoint"
     ),
@@ -292,33 +295,64 @@ def serve(
     Connects to a remote SurrealDB instance, starts the gRPC backend and web UI,
     and runs the automation daemon. Designed to run inside a K8s code-location pod.
     """
-    os.environ["RIVERS_MODULE"] = module
-    os.environ["RIVERS_DEPLOYMENT"] = "cloud"
-    os.environ["RIVERS_SURREAL_ENDPOINT"] = surreal_endpoint
+    cfg = RiversConfig(
+        **{
+            k: v
+            for k, v in {
+                "module": module,
+                "repo_var": repo_var,
+                "host": host,
+                "grpc_port": grpc_port,
+                "surreal_endpoint": surreal_endpoint,
+                "no_daemon": no_daemon,
+            }.items()
+            if v is not None
+        }
+    )
 
-    storage = Storage.connect(surreal_endpoint)
-
-    sys.path.insert(0, ".")
-    try:
-        mod = importlib.import_module(module)
-    except ModuleNotFoundError:
-        typer.echo(f"Error: module '{module}' not found", err=True)
+    if cfg.module.path is None:
+        typer.echo(
+            "Error: no module configured. Set 'module' in [rivers] config or pass --module",
+            err=True,
+        )
         raise typer.Exit(1)
 
-    repo_obj = getattr(mod, repo_var, None)
+    if cfg.storage.endpoint is None:
+        typer.echo(
+            "Error: no storage endpoint configured. Set 'storage.endpoint' in [rivers] config or pass --surreal_endpoint",
+            err=True,
+        )
+        raise typer.Exit(1)
+
+    os.environ["RIVERS_DEPLOYMENT"] = "cloud"
+    os.environ["RIVERS_MODULE"] = cfg.module.path
+    os.environ["RIVERS_SURREAL_ENDPOINT"] = cfg.storage.endpoint
+
+    storage = Storage.connect(cfg.storage.endpoint)
+
+    try:
+        mod = importlib.import_module(cfg.module.path)
+    except ModuleNotFoundError:
+        typer.echo(f"Error: module '{cfg.module.path}' not found", err=True)
+        raise typer.Exit(1)
+
+    repo_obj = getattr(mod, cfg.module.repo_var, None)
     if repo_obj is None:
-        typer.echo(f"Error: '{repo_var}' not found in module '{module}'", err=True)
+        typer.echo(
+            f"Error: '{cfg.module.repo_var}' not found in module '{cfg.module.path}'",
+            err=True,
+        )
         raise typer.Exit(1)
 
     from rivers import CodeRepository
 
     if not isinstance(repo_obj, CodeRepository):
-        typer.echo(f"Error: '{repo_var}' is not a CodeRepository", err=True)
+        typer.echo(f"Error: '{cfg.module.repo_var}' is not a CodeRepository", err=True)
         raise typer.Exit(1)
 
     repo_obj.resolve(storage=storage)
 
-    repo_obj._start_grpc_server(host, grpc_port)
+    repo_obj._start_grpc_server(cfg.server.host, cfg.server.grpc_port)
 
     if not no_daemon:
         from rivers._core import AutomationDaemon
