@@ -18,11 +18,13 @@ polars  = ["polars>=1.33.1"]
 pyarrow = ["pyarrow>=18.0.0"]
 datafusion = ["datafusion>=53"]
 pandas  = ["pandas>=2.0.0", "pyarrow>=18.0.0"]
+pyspark = ["pyspark>=3.3.0"]
 delta   = ["deltalake>=0.25.0"]
 delta-polars = ["rivers[polars]", "rivers[delta]", "polars-deltalake>=1.2.2"]
 delta-pyarrow = ["rivers[pyarrow]", "rivers[delta]"]
 delta-datafusion = ["rivers[datafusion]", "rivers[delta]", "deltalake>=1.6.0"]
 delta-pandas = ["rivers[pandas]", "rivers[delta]"]
+delta-pyspark = ["rivers[pyspark]", "rivers[pyarrow]", "rivers[delta]", "delta-spark>=3.0.0"]
 otel = ["opentelemetry-api>=1.0"]
 
 [project.scripts]
@@ -40,6 +42,9 @@ norecursedirs = ["tests/integration/kubernetes"]
 # method can't interrupt code blocked inside a C extension.
 timeout = 60
 timeout_method = "thread"
+markers = [
+    "spark_test: marks tests that Spark instance (deselect with '-m \"not spark_test\"')"
+]
 
 [tool.pyright]
 exclude = ["**/tests"]
